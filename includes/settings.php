@@ -96,12 +96,19 @@ add_settings_field(
 
 register_setting(
     'primero_currency_converter_settings',
-    'primero_currency_api_source'
+    'primero_currency_api_source',
+    [
+        'sanitize_callback' => 'primero_sanitize_api_source',
+        'default'           => 'fawaz',
+    ]
 );
 
-register_setting(
+add_settings_field(
+    'primero_currency_api_source',
+    'Источник курсов валют',
+    'primero_currency_api_source_field',
     'primero_currency_converter_settings',
-    'primero_currency_api_source'
+    'primero_currency_converter_main_section'
 );
 
 }
@@ -195,14 +202,29 @@ function primero_currency_base_currency_field() {
 }
 
 function primero_currency_api_source_field() {
-    $value = get_option('primero_currency_api_source', 'fawaz');
+
+    $value = get_option( 'primero_currency_api_source', 'fawaz' );
 
     echo '<select name="primero_currency_api_source">';
-    echo '<option value="fawaz" ' . selected($value, 'fawaz', false) . '>Fawaz Ahmed Currency API</option>';
-    echo '<option value="frankfurter" ' . selected($value, 'frankfurter', false) . '>Frankfurter API</option>';
+    echo '<option value="fawaz" ' . selected( $value, 'fawaz', false ) . '>Fawaz Ahmed Currency API</option>';
+    echo '<option value="frankfurter" ' . selected( $value, 'frankfurter', false ) . '>Frankfurter API</option>';
     echo '</select>';
 
     echo '<p class="description">Выберите источник данных для курсов валют.</p>';
+}
+
+function primero_sanitize_api_source( $value ) {
+
+    $allowed_sources = [
+        'fawaz',
+        'frankfurter',
+    ];
+
+    if ( ! in_array( $value, $allowed_sources, true ) ) {
+        return 'fawaz';
+    }
+
+    return $value;
 }
 
 add_action('admin_menu', 'primero_currency_converter_admin_menu');
