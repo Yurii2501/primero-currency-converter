@@ -9,6 +9,8 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
  */
 
 delete_option( 'primero_currency_cache_minutes' );
+delete_option( 'primero_currency_auto_convert' );
+delete_option( 'primero_currency_favorite_currencies' );
 delete_option( 'primero_currency_base_currency' );
 delete_option( 'primero_currency_api_source' );
 delete_option( 'primero_currency_rates_updated_at' );
