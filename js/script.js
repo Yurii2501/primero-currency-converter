@@ -1,18 +1,11 @@
 document.addEventListener('DOMContentLoaded', function () {
     console.log('Primero Currency Converter загружен');
 
-    const form = document.querySelector('.currency-converter-form');
-    if (!form) return;
+    const converters = document.querySelectorAll('.primero-currency-converter');
 
-    const fromSelect = document.querySelector('select[name="from_currency"]');
-    const toSelect = document.querySelector('select[name="to_currency"]');
-    const amountInput = document.querySelector('input[name="amount"]');
-    const swapButton = document.querySelector('.swap-currencies-button');
-    const submitButton = form.querySelector('.convert-button');
-    const resultBox = document.querySelector('.ajax-result');
-    const themeToggle = document.getElementById('themeToggle');
-    const languageButtons = document.querySelectorAll('.language-button');
-    const chartCanvas = document.getElementById('currencyChart');
+    if (!converters.length) {
+        return;
+    }
 
     const translations = {
         en: {
@@ -55,7 +48,7 @@ document.addEventListener('DOMContentLoaded', function () {
             copy: 'Копировать',
             copied: 'Скопировано',
             copiedMessage: 'Результат скопирован',
-            updatedAt: 'Курс обновлен',
+            updatedAt: 'Курс обновлён',
             source: 'Источник',
             success: 'Конвертация выполнена',
             error: 'Ошибка',
@@ -89,499 +82,1212 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    let currentLanguage = localStorage.getItem('primero-language') || 'en';
-    let currentText = translations[currentLanguage] || translations.en;
+    converters.forEach(function (converter, converterIndex) {
+        const form = converter.querySelector('.currency-converter-form');
 
-    let fromChoices = null;
-    let toChoices = null;
-    let currencyChart = null;
-    let autoConvertTimer = null;
-    let selectedHistoryDays = 7;
-
-    function initChoices() {
-        if (fromChoices) fromChoices.destroy();
-        if (toChoices) toChoices.destroy();
-
-        fromChoices = new Choices(fromSelect, {
-            searchEnabled: true,
-            itemSelectText: '',
-            shouldSort: false,
-        });
-
-        toChoices = new Choices(toSelect, {
-            searchEnabled: true,
-            itemSelectText: '',
-            shouldSort: false,
-        });
-    }
-
-    function updateCurrencyLabels(lang) {
-        const currencyTranslations = currencyConverter.currencyTranslations || {};
-        const fromValue = fromSelect.value;
-        const toValue = toSelect.value;
-
-        document
-            .querySelectorAll('select[name="from_currency"] option, select[name="to_currency"] option')
-            .forEach(function (option) {
-                const code = option.value;
-
-                if (currencyTranslations[code] && currencyTranslations[code][lang]) {
-                    option.textContent = currencyTranslations[code][lang];
-                }
-            });
-
-        initChoices();
-
-        if (fromValue) fromChoices.setChoiceByValue(fromValue);
-        if (toValue) toChoices.setChoiceByValue(toValue);
-    }
-
-    function applyLanguage(lang) {
-        const current = translations[lang] || translations.en;
-
-        currentLanguage = lang;
-        currentText = current;
-
-        const title = document.getElementById('converterTitle');
-        const amount = document.getElementById('amountLabel');
-        const from = document.getElementById('fromCurrencyLabel');
-        const to = document.getElementById('toCurrencyLabel');
-        const convert = document.getElementById('convertButton');
-        const refresh = document.getElementById('refreshButton');
-        const historyTitle = document.getElementById('historyTitle');
-        const chartTitle = document.getElementById('chartTitle');
-        const period7 = document.getElementById('period7');
-        const period30 = document.getElementById('period30');
-        const period90 = document.getElementById('period90');
-
-        if (title) title.textContent = current.title;
-        if (amount) amount.textContent = current.amount + ':';
-        if (from) from.textContent = current.from + ':';
-        if (to) to.textContent = current.to + ':';
-        if (convert) convert.textContent = current.convert;
-        if (refresh) refresh.innerHTML = '🔄 ' + current.refresh;
-        if (historyTitle) historyTitle.textContent = '🕘 ' + current.history;
-        if (chartTitle) chartTitle.textContent = '📈 ' + current.chart;
-        if (period7) period7.textContent = current.period7;
-        if (period30) period30.textContent = current.period30;
-        if (period90) period90.textContent = current.period90;
-        if (amountInput) amountInput.placeholder = current.placeholder;
-
-        languageButtons.forEach(function (button) {
-            button.classList.toggle('active', button.dataset.lang === lang);
-        });
-
-        updateCurrencyLabels(lang);
-        localStorage.setItem('primero-language', lang);
-    }
-
-    function showLoading() {
-        submitButton.disabled = true;
-        submitButton.innerHTML = '⏳ ' + currentText.loading;
-        resultBox.innerHTML = '<p>⏳ ' + currentText.loading + '</p>';
-    }
-
-    function hideLoading() {
-        submitButton.disabled = false;
-        submitButton.textContent = currentText.convert;
-    }
-
-    function showToast(message) {
-        const toast = document.getElementById('primeroToast');
-
-        if (!toast) return;
-
-        toast.innerHTML = message;
-        toast.classList.add('show');
-
-        setTimeout(function () {
-            toast.classList.remove('show');
-        }, 2500);
-    }
-
-    function saveConversionToHistory(text) {
-        let history = JSON.parse(localStorage.getItem('primero-history') || '[]');
-
-        history.unshift(text);
-        history = history.slice(0, 5);
-
-        localStorage.setItem('primero-history', JSON.stringify(history));
-        renderConversionHistory();
-    }
-
-    function renderConversionHistory() {
-        const historyContainer = document.getElementById('conversionHistory');
-        const historyBlock = document.querySelector('.conversion-history');
-
-        if (!historyContainer || !historyBlock) return;
-
-        const history = JSON.parse(localStorage.getItem('primero-history') || '[]');
-
-        if (history.length === 0) {
-            historyBlock.style.display = 'none';
+        if (!form) {
             return;
         }
 
-        historyBlock.style.display = 'block';
+        const fromSelect = converter.querySelector(
+            'select[name="from_currency"]'
+        );
 
-        historyContainer.innerHTML = history.map(function (item) {
-            return '<div class="conversion-history-item">' + item + '</div>';
-        }).join('');
-    }
+        const toSelect = converter.querySelector(
+            'select[name="to_currency"]'
+        );
 
-    function scheduleAutoConvert() {
-        if (currencyConverter.autoConvert !== '1' && currencyConverter.autoConvert !== 1) {
+        const amountInput = converter.querySelector(
+            'input[name="amount"]'
+        );
+
+        const swapButton = converter.querySelector(
+            '.swap-currencies-button'
+        );
+
+        const submitButton = converter.querySelector(
+            '.convert-button'
+        );
+
+        const refreshButton = converter.querySelector(
+            '.refresh-button'
+        );
+
+        const resultBox = converter.querySelector(
+            '.ajax-result'
+        );
+
+        const themeToggle = converter.querySelector(
+            '.theme-toggle'
+        );
+
+        const languageButtons = converter.querySelectorAll(
+            '.language-button'
+        );
+
+        const chartCanvas = converter.querySelector(
+            '.currency-chart'
+        );
+
+        const chartContainer = converter.querySelector(
+            '.currency-chart-container'
+        );
+
+        const periodButtons = converter.querySelectorAll(
+            '.chart-period-button'
+        );
+
+        const historyContainer = converter.querySelector(
+            '.conversion-history-list'
+        );
+
+        const historyBlock = converter.querySelector(
+            '.conversion-history'
+        );
+
+        const toast = converter.querySelector(
+            '.primero-toast'
+        );
+
+        const rateUsd = converter.querySelector(
+            '.rate-usd'
+        );
+
+        const rateEur = converter.querySelector(
+            '.rate-eur'
+        );
+
+        const rateGbp = converter.querySelector(
+            '.rate-gbp'
+        );
+
+        if (
+            !fromSelect ||
+            !toSelect ||
+            !amountInput ||
+            !submitButton ||
+            !resultBox
+        ) {
             return;
         }
 
-        clearTimeout(autoConvertTimer);
+        const storageSuffix = String(converterIndex);
 
-        autoConvertTimer = setTimeout(function () {
-            const amount = parseFloat(amountInput.value);
+        const fromCurrencyStorageKey =
+            'primero-from-currency-' + storageSuffix;
 
-            if (!amount || amount <= 0) {
-                resultBox.innerHTML = '';
+        const toCurrencyStorageKey =
+            'primero-to-currency-' + storageSuffix;
+
+        const historyStorageKey =
+            'primero-history-' + storageSuffix;
+
+        let currentLanguage =
+            localStorage.getItem('primero-language') || 'en';
+
+        let currentText =
+            translations[currentLanguage] || translations.en;
+
+        let fromChoices = null;
+        let toChoices = null;
+        let currencyChart = null;
+        let autoConvertTimer = null;
+
+        let selectedHistoryDays = parseInt(
+            currencyConverter.historyDays || 7,
+            10
+        );
+
+        if (![7, 30, 90].includes(selectedHistoryDays)) {
+            selectedHistoryDays = 7;
+        }
+
+        function setChoiceValue(choicesInstance, value) {
+    if (!choicesInstance || !value) {
+        return;
+    }
+
+    choicesInstance.setChoiceByValue(value);
+}
+        function initChoices() {
+            if (
+                typeof Choices === 'undefined'
+            ) {
                 return;
             }
 
-            form.requestSubmit();
-        }, 500);
-    }
-
-    function swapCurrencies() {
-        const fromValue = fromSelect.value;
-        const toValue = toSelect.value;
-
-        fromChoices.setChoiceByValue(toValue);
-        toChoices.setChoiceByValue(fromValue);
-
-        localStorage.setItem('primero-from-currency', toValue);
-        localStorage.setItem('primero-to-currency', fromValue);
-    }
-
-    function updateChart(labels, values) {
-        if (!currencyChart) return;
-
-        currencyChart.data.labels = labels;
-        currencyChart.data.datasets[0].data = values;
-        currencyChart.update();
-    }
-
-    function updateChartTheme() {
-        if (!currencyChart) return;
-
-        const isDark = document.body.classList.contains('dark-theme');
-
-        currencyChart.options.scales = {
-            x: {
-                ticks: {
-                    color: isDark ? '#e5e7eb' : '#374151'
-                },
-                grid: {
-                    color: isDark ? '#374151' : '#e5e7eb'
-                }
-            },
-            y: {
-                ticks: {
-                    color: isDark ? '#e5e7eb' : '#374151'
-                },
-                grid: {
-                    color: isDark ? '#374151' : '#e5e7eb'
-                }
+            if (fromChoices) {
+                fromChoices.destroy();
             }
-        };
 
-        currencyChart.data.datasets[0].borderColor = isDark ? '#60a5fa' : '#2563eb';
-        currencyChart.data.datasets[0].backgroundColor = isDark
-            ? 'rgba(96, 165, 250, .15)'
-            : 'rgba(37, 99, 235, .15)';
-
-        currencyChart.update();
-    }
-
-    function loadCurrencyHistory() {
-        const formData = new FormData();
-
-        formData.append('action', 'primero_currency_history');
-        formData.append('nonce', currencyConverter.nonce);
-        formData.append('from_currency', fromSelect.value);
-        formData.append('to_currency', toSelect.value);
-        formData.append('days', selectedHistoryDays);
-
-        document.querySelector('.currency-chart-container')?.classList.add('loading');
-        document.querySelector('.chart-period-button.active')?.classList.add('loading');
-
-        fetch(currencyConverter.ajaxUrl, {
-            method: 'POST',
-            body: formData
-        })
-            .then(function (response) {
-                return response.json();
-            })
-            .then(function (data) {
-                document.querySelector('.currency-chart-container')?.classList.remove('loading');
-                document.querySelector('.chart-period-button.active')?.classList.remove('loading');
-
-                if (!data.success) return;
-
-                const locale = currentLanguage === 'ru' ? 'ru-RU' : currentLanguage === 'es' ? 'es-ES' : 'en-US';
-
-                const labels = data.data.history.map(function (item) {
-                    const date = new Date(item.date);
-
-                    return date.toLocaleDateString(locale, {
-                        day: 'numeric',
-                        month: 'short'
-                    });
-                });
-
-                const values = data.data.history.map(function (item) {
-                    return item.rate;
-                });
-
-                updateChart(labels, values);
-            });
-    }
-
-    function updatePopularRates() {
-        const formData = new FormData();
-
-        formData.append('action', 'primero_get_rates');
-        formData.append('nonce', currencyConverter.nonce);
-
-        fetch(currencyConverter.ajaxUrl, {
-            method: 'POST',
-            body: formData
-        })
-            .then(function (response) {
-                return response.json();
-            })
-            .then(function (data) {
-                if (!data.success) return;
-
-                document.getElementById('rateUsd').textContent =
-                    data.data.USD.toFixed(2) + ' ' + data.data.base_currency;
-
-                document.getElementById('rateEur').textContent =
-                    data.data.EUR.toFixed(2) + ' ' + data.data.base_currency;
-
-                document.getElementById('rateGbp').textContent =
-                    data.data.GBP.toFixed(2) + ' ' + data.data.base_currency;
-            });
-    }
-
-    function initChart() {
-        if (!chartCanvas) return;
-
-        currencyChart = new Chart(chartCanvas, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: fromSelect.value + ' → ' + toSelect.value,
-                    data: [],
-                    borderColor: '#2563eb',
-                    backgroundColor: 'rgba(37,99,235,.15)',
-                    fill: true,
-                    tension: 0.35
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                }
+            if (toChoices) {
+                toChoices.destroy();
             }
-        });
 
-        updateChartTheme();
-    }
+            fromChoices = new Choices(fromSelect, {
+                searchEnabled: true,
+                itemSelectText: '',
+                shouldSort: false
+            });
 
-    initChoices();
-
-    const savedFromCurrency = localStorage.getItem('primero-from-currency');
-    const savedToCurrency = localStorage.getItem('primero-to-currency');
-
-    if (savedFromCurrency) {
-        fromChoices.setChoiceByValue(savedFromCurrency);
-    }
-
-    if (savedToCurrency) {
-        toChoices.setChoiceByValue(savedToCurrency);
-    }
-
-    applyLanguage(currentLanguage);
-
-    if (themeToggle) {
-        const savedTheme = localStorage.getItem('primero-theme');
-
-        if (savedTheme === 'dark') {
-            document.body.classList.add('dark-theme');
-            themeToggle.checked = true;
+            toChoices = new Choices(toSelect, {
+                searchEnabled: true,
+                itemSelectText: '',
+                shouldSort: false
+            });
         }
 
-        themeToggle.addEventListener('change', function () {
-            if (themeToggle.checked) {
-                document.body.classList.add('dark-theme');
-                localStorage.setItem('primero-theme', 'dark');
-            } else {
-                document.body.classList.remove('dark-theme');
-                localStorage.setItem('primero-theme', 'light');
+        function updateCurrencyLabels(language) {
+    const currencyTranslations =
+        currencyConverter.currencyTranslations || {};
+
+    fromSelect.querySelectorAll('option').forEach(function (option) {
+        const code = option.value;
+
+        if (
+            currencyTranslations[code] &&
+            currencyTranslations[code][language]
+        ) {
+            option.textContent =
+                currencyTranslations[code][language];
+        }
+    });
+
+    toSelect.querySelectorAll('option').forEach(function (option) {
+        const code = option.value;
+
+        if (
+            currencyTranslations[code] &&
+            currencyTranslations[code][language]
+        ) {
+            option.textContent =
+                currencyTranslations[code][language];
+        }
+    });
+}
+
+        function applyLanguage(language) {
+            const current =
+                translations[language] || translations.en;
+
+            currentLanguage = language;
+            currentText = current;
+
+            const title = converter.querySelector(
+                '.converter-title'
+            );
+
+            const amountLabel = converter.querySelector(
+                '.amount-label'
+            );
+
+            const fromLabel = converter.querySelector(
+                '.from-currency-label'
+            );
+
+            const toLabel = converter.querySelector(
+                '.to-currency-label'
+            );
+
+            const historyTitle = converter.querySelector(
+                '.history-title'
+            );
+
+            const chartTitle = converter.querySelector(
+                '.chart-title'
+            );
+
+            const period7 = converter.querySelector(
+                '.period-7'
+            );
+
+            const period30 = converter.querySelector(
+                '.period-30'
+            );
+
+            const period90 = converter.querySelector(
+                '.period-90'
+            );
+
+            if (title) {
+                title.textContent = current.title;
             }
 
-            updateChartTheme();
-        });
-    }
+            if (amountLabel) {
+                amountLabel.textContent =
+                    current.amount + ':';
+            }
 
-    languageButtons.forEach(function (button) {
-        button.addEventListener('click', function () {
-            applyLanguage(button.dataset.lang);
-            loadCurrencyHistory();
-        });
-    });
+            if (fromLabel) {
+                fromLabel.textContent =
+                    current.from + ':';
+            }
 
-    fromSelect.addEventListener('change', function () {
-        localStorage.setItem('primero-from-currency', fromSelect.value);
-        scheduleAutoConvert();
-        loadCurrencyHistory();
-    });
+            if (toLabel) {
+                toLabel.textContent =
+                    current.to + ':';
+            }
 
-    toSelect.addEventListener('change', function () {
-        localStorage.setItem('primero-to-currency', toSelect.value);
-        scheduleAutoConvert();
-        loadCurrencyHistory();
-    });
+            if (submitButton) {
+                submitButton.textContent =
+                    current.convert;
+            }
 
-    amountInput.addEventListener('input', scheduleAutoConvert);
+            if (refreshButton) {
+                refreshButton.innerHTML =
+                    '🔄 ' + current.refresh;
+            }
 
-    swapButton.addEventListener('click', function () {
-        swapCurrencies();
-        scheduleAutoConvert();
-        loadCurrencyHistory();
-    });
+            if (historyTitle) {
+                historyTitle.textContent =
+                    '🕘 ' + current.history;
+            }
 
-    form.addEventListener('submit', function (event) {
-        event.preventDefault();
+            if (chartTitle) {
+                chartTitle.textContent =
+                    '📈 ' + current.chart;
+            }
 
-        showLoading();
+            if (period7) {
+                period7.textContent =
+                    current.period7;
+            }
 
-        const formData = new FormData(form);
+            if (period30) {
+                period30.textContent =
+                    current.period30;
+            }
 
-        formData.append('action', 'primero_convert_currency');
-        formData.append('nonce', currencyConverter.nonce);
+            if (period90) {
+                period90.textContent =
+                    current.period90;
+            }
 
-        fetch(currencyConverter.ajaxUrl, {
-            method: 'POST',
-            body: formData
-        })
-            .then(function (response) {
-                return response.json();
-            })
-            .then(function (data) {
-                hideLoading();
+            amountInput.placeholder =
+                current.placeholder;
 
-                if (!data.success) {
-                    resultBox.innerHTML =
-                        '<p style="color:red;">❌ ' +
-                        (currentText.error || 'Error') + ': ' +
-                        (data.data?.message || currentText.requestFailed) +
-                        '</p>';
+            languageButtons.forEach(function (button) {
+                button.classList.toggle(
+                    'active',
+                    button.dataset.lang === language
+                );
+            });
 
+            updateCurrencyLabels(language);
+        }
+
+        function showLoading() {
+            submitButton.disabled = true;
+            submitButton.innerHTML =
+                '⏳ ' + currentText.loading;
+
+            if (refreshButton) {
+                refreshButton.disabled = true;
+            }
+
+            resultBox.innerHTML =
+                '<p>⏳ ' +
+                currentText.loading +
+                '</p>';
+        }
+
+        function hideLoading() {
+            submitButton.disabled = false;
+            submitButton.textContent =
+                currentText.convert;
+
+            if (refreshButton) {
+                refreshButton.disabled = false;
+            }
+        }
+
+        function showToast(message) {
+            if (!toast) {
+                return;
+            }
+
+            toast.textContent = message;
+            toast.classList.add('show');
+
+            setTimeout(function () {
+                toast.classList.remove('show');
+            }, 2500);
+        }
+
+        function getStoredHistory() {
+            try {
+                const savedHistory =
+                    localStorage.getItem(historyStorageKey);
+
+                const history =
+                    JSON.parse(savedHistory || '[]');
+
+                return Array.isArray(history)
+                    ? history
+                    : [];
+            } catch (error) {
+                console.error(
+                    'Не удалось прочитать историю:',
+                    error
+                );
+
+                return [];
+            }
+        }
+
+        function saveConversionToHistory(text) {
+            let history = getStoredHistory();
+
+            history.unshift(text);
+            history = history.slice(0, 5);
+
+            localStorage.setItem(
+                historyStorageKey,
+                JSON.stringify(history)
+            );
+
+            renderConversionHistory();
+        }
+
+        function renderConversionHistory() {
+            if (!historyContainer || !historyBlock) {
+                return;
+            }
+
+            const history = getStoredHistory();
+
+            historyContainer.innerHTML = '';
+
+            if (!history.length) {
+                historyBlock.style.display = 'none';
+                return;
+            }
+
+            historyBlock.style.display = 'block';
+
+            history.forEach(function (item) {
+                const historyItem =
+                    document.createElement('div');
+
+                historyItem.className =
+                    'conversion-history-item';
+
+                historyItem.textContent = item;
+
+                historyContainer.appendChild(
+                    historyItem
+                );
+            });
+        }
+
+        function scheduleAutoConvert() {
+            if (
+                currencyConverter.autoConvert !== '1' &&
+                currencyConverter.autoConvert !== 1
+            ) {
+                return;
+            }
+
+            clearTimeout(autoConvertTimer);
+
+            autoConvertTimer = setTimeout(function () {
+                const amount =
+                    parseFloat(amountInput.value);
+
+                if (!amount || amount <= 0) {
+                    resultBox.innerHTML = '';
                     return;
                 }
 
-                resultBox.innerHTML =
-                    '<div class="conversion-result">' +
-                    '<div class="conversion-result-title">✅ ' + currentText.success + '</div>' +
-                    '<div class="conversion-result-row">' +
-                    '<span>' + data.data.amount + ' ' + data.data.from_currency + '</span>' +
-                    '<span class="conversion-arrow">↓</span>' +
-                    '<strong>' + data.data.converted + ' ' + data.data.to_currency + '</strong>' +
-                    '<small>1 ' + data.data.from_currency + ' = ' +
-                    data.data.single_rate + ' ' + data.data.to_currency + '</small>' +
-                    '<small>1 ' + data.data.to_currency + ' = ' +
-                    data.data.reverse_rate + ' ' + data.data.from_currency + '</small>' +
-                    '<small>' + currentText.updatedAt + ': ' + data.data.updated_at + '</small>' +
-                    '<small>' + currentText.source + ': ' + data.data.rate_source + '</small>' +
-                    '<button type="button" class="copy-result-button" data-copy="' +
-                    data.data.amount + ' ' + data.data.from_currency + ' = ' +
-                    data.data.converted + ' ' + data.data.to_currency +
-                    '">📋 ' + currentText.copy + '</button>' +
-                    '</div>' +
-                    '</div>';
+                form.requestSubmit();
+            }, 500);
+        }
 
-                saveConversionToHistory(
-                    data.data.amount + ' ' +
-                    data.data.from_currency +
-                    ' → ' +
-                    data.data.converted +
-                    ' ' +
-                    data.data.to_currency
+        function swapCurrencies() {
+            const fromValue = fromSelect.value;
+            const toValue = toSelect.value;
+
+            setChoiceValue(fromChoices, toValue);
+            setChoiceValue(toChoices, fromValue);
+
+            if (!fromChoices) {
+                fromSelect.value = toValue;
+            }
+
+            if (!toChoices) {
+                toSelect.value = fromValue;
+            }
+
+            localStorage.setItem(
+                fromCurrencyStorageKey,
+                toValue
+            );
+
+            localStorage.setItem(
+                toCurrencyStorageKey,
+                fromValue
+            );
+        }
+
+        function updateChart(labels, values) {
+            if (!currencyChart) {
+                return;
+            }
+
+            currencyChart.data.labels = labels;
+
+            currencyChart.data.datasets[0].data =
+                values;
+
+            currencyChart.data.datasets[0].label =
+                fromSelect.value +
+                ' → ' +
+                toSelect.value;
+
+            currencyChart.update();
+        }
+
+        function updateChartTheme() {
+            if (!currencyChart) {
+                return;
+            }
+
+            const isDark =
+                document.body.classList.contains(
+                    'dark-theme'
+                );
+
+            currencyChart.options.scales = {
+                x: {
+                    ticks: {
+                        color: isDark
+                            ? '#e5e7eb'
+                            : '#374151'
+                    },
+                    grid: {
+                        color: isDark
+                            ? '#374151'
+                            : '#e5e7eb'
+                    }
+                },
+                y: {
+                    ticks: {
+                        color: isDark
+                            ? '#e5e7eb'
+                            : '#374151'
+                    },
+                    grid: {
+                        color: isDark
+                            ? '#374151'
+                            : '#e5e7eb'
+                    }
+                }
+            };
+
+            currencyChart.data.datasets[0].borderColor =
+                isDark
+                    ? '#60a5fa'
+                    : '#2563eb';
+
+            currencyChart.data.datasets[0].backgroundColor =
+                isDark
+                    ? 'rgba(96, 165, 250, .15)'
+                    : 'rgba(37, 99, 235, .15)';
+
+            currencyChart.update();
+        }
+
+        function setChartLoading(isLoading) {
+            const activePeriodButton =
+                converter.querySelector(
+                    '.chart-period-button.active'
+                );
+
+            if (chartContainer) {
+                chartContainer.classList.toggle(
+                    'loading',
+                    isLoading
+                );
+            }
+
+            if (activePeriodButton) {
+                activePeriodButton.classList.toggle(
+                    'loading',
+                    isLoading
+                );
+            }
+        }
+
+        function loadCurrencyHistory() {
+            const formData = new FormData();
+
+            formData.append(
+                'action',
+                'primero_currency_history'
+            );
+
+            formData.append(
+                'nonce',
+                currencyConverter.nonce
+            );
+
+            formData.append(
+                'from_currency',
+                fromSelect.value
+            );
+
+            formData.append(
+                'to_currency',
+                toSelect.value
+            );
+
+            formData.append(
+                'days',
+                selectedHistoryDays
+            );
+
+            setChartLoading(true);
+
+            fetch(currencyConverter.ajaxUrl, {
+                method: 'POST',
+                body: formData
+            })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error(
+                            'HTTP error: ' +
+                            response.status
+                        );
+                    }
+
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (
+                        !data.success ||
+                        !data.data ||
+                        !Array.isArray(data.data.history)
+                    ) {
+                        return;
+                    }
+
+                    const locale =
+                        currentLanguage === 'ru'
+                            ? 'ru-RU'
+                            : currentLanguage === 'es'
+                                ? 'es-ES'
+                                : 'en-US';
+
+                    const labels =
+                        data.data.history.map(
+                            function (item) {
+                                const date =
+                                    new Date(item.date);
+
+                                return date.toLocaleDateString(
+                                    locale,
+                                    {
+                                        day: 'numeric',
+                                        month: 'short'
+                                    }
+                                );
+                            }
+                        );
+
+                    const values =
+                        data.data.history.map(
+                            function (item) {
+                                return Number(item.rate);
+                            }
+                        );
+
+                    updateChart(labels, values);
+                })
+                .catch(function (error) {
+                    console.error(
+                        'Ошибка загрузки истории курса:',
+                        error
+                    );
+                })
+                .finally(function () {
+                    setChartLoading(false);
+                });
+        }
+
+        function updatePopularRates() {
+            const formData = new FormData();
+
+            formData.append(
+                'action',
+                'primero_get_rates'
+            );
+
+            formData.append(
+                'nonce',
+                currencyConverter.nonce
+            );
+
+            fetch(currencyConverter.ajaxUrl, {
+                method: 'POST',
+                body: formData
+            })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error(
+                            'HTTP error: ' +
+                            response.status
+                        );
+                    }
+
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (!data.success || !data.data) {
+                        return;
+                    }
+
+                    const baseCurrency =
+                        data.data.base_currency;
+
+                    if (
+                        rateUsd &&
+                        Number.isFinite(
+                            Number(data.data.USD)
+                        )
+                    ) {
+                        rateUsd.textContent =
+                            Number(data.data.USD)
+                                .toFixed(2) +
+                            ' ' +
+                            baseCurrency;
+                    }
+
+                    if (
+                        rateEur &&
+                        Number.isFinite(
+                            Number(data.data.EUR)
+                        )
+                    ) {
+                        rateEur.textContent =
+                            Number(data.data.EUR)
+                                .toFixed(2) +
+                            ' ' +
+                            baseCurrency;
+                    }
+
+                    if (
+                        rateGbp &&
+                        Number.isFinite(
+                            Number(data.data.GBP)
+                        )
+                    ) {
+                        rateGbp.textContent =
+                            Number(data.data.GBP)
+                                .toFixed(2) +
+                            ' ' +
+                            baseCurrency;
+                    }
+                })
+                .catch(function (error) {
+                    console.error(
+                        'Ошибка загрузки популярных курсов:',
+                        error
+                    );
+                });
+        }
+
+        function initChart() {
+            if (
+                !chartCanvas ||
+                typeof Chart === 'undefined'
+            ) {
+                return;
+            }
+
+            currencyChart = new Chart(chartCanvas, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label:
+                                fromSelect.value +
+                                ' → ' +
+                                toSelect.value,
+                            data: [],
+                            borderColor: '#2563eb',
+                            backgroundColor:
+                                'rgba(37,99,235,.15)',
+                            fill: true,
+                            tension: 0.35
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+
+            updateChartTheme();
+        }
+
+        initChoices();
+
+        const savedFromCurrency =
+            localStorage.getItem(
+                fromCurrencyStorageKey
+            );
+
+        const savedToCurrency =
+            localStorage.getItem(
+                toCurrencyStorageKey
+            );
+
+        if (savedFromCurrency) {
+            setChoiceValue(
+                fromChoices,
+                savedFromCurrency
+            );
+
+            if (!fromChoices) {
+                fromSelect.value =
+                    savedFromCurrency;
+            }
+        }
+
+        if (savedToCurrency) {
+            setChoiceValue(
+                toChoices,
+                savedToCurrency
+            );
+
+            if (!toChoices) {
+                toSelect.value =
+                    savedToCurrency;
+            }
+        }
+
+        const savedTheme =
+            localStorage.getItem('primero-theme');
+
+        if (savedTheme === 'dark') {
+            document.body.classList.add(
+                'dark-theme'
+            );
+        } else {
+            document.body.classList.remove(
+                'dark-theme'
+            );
+        }
+
+        if (themeToggle) {
+            themeToggle.checked =
+                savedTheme === 'dark';
+
+            themeToggle.addEventListener(
+                'change',
+                function () {
+                    const theme =
+                        themeToggle.checked
+                            ? 'dark'
+                            : 'light';
+
+                    localStorage.setItem(
+                        'primero-theme',
+                        theme
+                    );
+
+                    document.body.classList.toggle(
+                        'dark-theme',
+                        theme === 'dark'
+                    );
+
+                    window.dispatchEvent(
+                        new CustomEvent(
+                            'primeroThemeChanged',
+                            {
+                                detail: {
+                                    theme: theme
+                                }
+                            }
+                        )
+                    );
+                }
+            );
+        }
+
+        window.addEventListener(
+            'primeroThemeChanged',
+            function (event) {
+                const isDark =
+                    event.detail.theme === 'dark';
+
+                document.body.classList.toggle(
+                    'dark-theme',
+                    isDark
+                );
+
+                if (themeToggle) {
+                    themeToggle.checked = isDark;
+                }
+
+                updateChartTheme();
+            }
+        );
+
+        languageButtons.forEach(function (button) {
+            button.addEventListener(
+                'click',
+                function () {
+                    const language =
+                        button.dataset.lang;
+
+                    localStorage.setItem(
+                        'primero-language',
+                        language
+                    );
+
+                    window.dispatchEvent(
+                        new CustomEvent(
+                            'primeroLanguageChanged',
+                            {
+                                detail: {
+                                    language: language
+                                }
+                            }
+                        )
+                    );
+                }
+            );
+        });
+
+        window.addEventListener(
+            'primeroLanguageChanged',
+            function (event) {
+                applyLanguage(
+                    event.detail.language
                 );
 
                 loadCurrencyHistory();
-                updatePopularRates();
-            })
-            .catch(function (error) {
-                hideLoading();
+            }
+        );
 
-                resultBox.innerHTML =
-                    '<p style="color:red;">❌ ' + currentText.connectionError + '.</p>';
+        fromSelect.addEventListener(
+            'change',
+            function () {
+                localStorage.setItem(
+                    fromCurrencyStorageKey,
+                    fromSelect.value
+                );
 
-                console.error(error);
-            });
-    });
+                scheduleAutoConvert();
+                loadCurrencyHistory();
+            }
+        );
 
-    resultBox.addEventListener('click', function (event) {
-        const copyButton = event.target.closest('.copy-result-button');
+        toSelect.addEventListener(
+            'change',
+            function () {
+                localStorage.setItem(
+                    toCurrencyStorageKey,
+                    toSelect.value
+                );
 
-        if (!copyButton) return;
+                scheduleAutoConvert();
+                loadCurrencyHistory();
+            }
+        );
 
-        const textToCopy = copyButton.dataset.copy;
+        amountInput.addEventListener(
+            'input',
+            scheduleAutoConvert
+        );
 
-        if (!textToCopy) return;
-
-        function showCopied() {
-            copyButton.innerHTML = '✅ ' + currentText.copied;
-            showToast('✅ ' + currentText.copiedMessage);
-
-            setTimeout(function () {
-                copyButton.innerHTML = '📋 ' + currentText.copy;
-            }, 2000);
+        if (swapButton) {
+            swapButton.addEventListener(
+                'click',
+                function () {
+                    swapCurrencies();
+                    scheduleAutoConvert();
+                    loadCurrencyHistory();
+                }
+            );
         }
 
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(textToCopy).then(showCopied);
-        } else {
-            const tempInput = document.createElement('textarea');
-            tempInput.value = textToCopy;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            document.execCommand('copy');
-            document.body.removeChild(tempInput);
+        form.addEventListener(
+            'submit',
+            function (event) {
+                event.preventDefault();
 
-            showCopied();
-        }
-    });
+                showLoading();
 
-    document.querySelectorAll('.chart-period-button').forEach(function (button) {
-        button.addEventListener('click', function () {
-            selectedHistoryDays = parseInt(button.dataset.days, 10);
+                const formData =
+                    new FormData(form);
 
-            document.querySelectorAll('.chart-period-button').forEach(function (btn) {
-                btn.classList.remove('active');
-            });
+                if (
+                    event.submitter &&
+                    event.submitter.name
+                ) {
+                    formData.append(
+                        event.submitter.name,
+                        event.submitter.value
+                    );
+                }
 
-            button.classList.add('active');
+                formData.append(
+                    'action',
+                    'primero_convert_currency'
+                );
 
-            loadCurrencyHistory();
+                formData.append(
+                    'nonce',
+                    currencyConverter.nonce
+                );
+
+                fetch(currencyConverter.ajaxUrl, {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(function (response) {
+                        if (!response.ok) {
+                            throw new Error(
+                                'HTTP error: ' +
+                                response.status
+                            );
+                        }
+
+                        return response.json();
+                    })
+                    .then(function (data) {
+                        hideLoading();
+
+                        if (!data.success) {
+                            const message =
+                                data.data &&
+                                data.data.message
+                                    ? data.data.message
+                                    : currentText.requestFailed;
+
+                            resultBox.innerHTML =
+                                '<p class="primero-error-message">' +
+                                '❌ ' +
+                                currentText.error +
+                                ': ' +
+                                message +
+                                '</p>';
+
+                            return;
+                        }
+
+                        resultBox.innerHTML =
+                            '<div class="conversion-result">' +
+                                '<div class="conversion-result-title">' +
+                                    '✅ ' +
+                                    currentText.success +
+                                '</div>' +
+                                '<div class="conversion-result-row">' +
+                                    '<span>' +
+                                        data.data.amount +
+                                        ' ' +
+                                        data.data.from_currency +
+                                    '</span>' +
+                                    '<span class="conversion-arrow">' +
+                                        '↓' +
+                                    '</span>' +
+                                    '<strong>' +
+                                        data.data.converted +
+                                        ' ' +
+                                        data.data.to_currency +
+                                    '</strong>' +
+                                    '<small>' +
+                                        '1 ' +
+                                        data.data.from_currency +
+                                        ' = ' +
+                                        data.data.single_rate +
+                                        ' ' +
+                                        data.data.to_currency +
+                                    '</small>' +
+                                    '<small>' +
+                                        '1 ' +
+                                        data.data.to_currency +
+                                        ' = ' +
+                                        data.data.reverse_rate +
+                                        ' ' +
+                                        data.data.from_currency +
+                                    '</small>' +
+                                    '<small>' +
+                                        currentText.updatedAt +
+                                        ': ' +
+                                        data.data.updated_at +
+                                    '</small>' +
+                                    '<small>' +
+                                        currentText.source +
+                                        ': ' +
+                                        data.data.rate_source +
+                                    '</small>' +
+                                    '<button ' +
+                                        'type="button" ' +
+                                        'class="copy-result-button" ' +
+                                        'data-copy="' +
+                                            data.data.amount +
+                                            ' ' +
+                                            data.data.from_currency +
+                                            ' = ' +
+                                            data.data.converted +
+                                            ' ' +
+                                            data.data.to_currency +
+                                        '">' +
+                                        '📋 ' +
+                                        currentText.copy +
+                                    '</button>' +
+                                '</div>' +
+                            '</div>';
+
+                        saveConversionToHistory(
+                            data.data.amount +
+                            ' ' +
+                            data.data.from_currency +
+                            ' → ' +
+                            data.data.converted +
+                            ' ' +
+                            data.data.to_currency
+                        );
+
+                        loadCurrencyHistory();
+                        updatePopularRates();
+                    })
+                    .catch(function (error) {
+                        hideLoading();
+
+                        resultBox.innerHTML =
+                            '<p class="primero-error-message">' +
+                            '❌ ' +
+                            currentText.connectionError +
+                            '.' +
+                            '</p>';
+
+                        console.error(error);
+                    });
+            }
+        );
+
+        resultBox.addEventListener(
+            'click',
+            function (event) {
+                const copyButton =
+                    event.target.closest(
+                        '.copy-result-button'
+                    );
+
+                if (!copyButton) {
+                    return;
+                }
+
+                const textToCopy =
+                    copyButton.dataset.copy;
+
+                if (!textToCopy) {
+                    return;
+                }
+
+                function showCopied() {
+                    copyButton.innerHTML =
+                        '✅ ' +
+                        currentText.copied;
+
+                    showToast(
+                        '✅ ' +
+                        currentText.copiedMessage
+                    );
+
+                    setTimeout(function () {
+                        copyButton.innerHTML =
+                            '📋 ' +
+                            currentText.copy;
+                    }, 2000);
+                }
+
+                if (
+                    navigator.clipboard &&
+                    navigator.clipboard.writeText
+                ) {
+                    navigator.clipboard
+                        .writeText(textToCopy)
+                        .then(showCopied)
+                        .catch(function (error) {
+                            console.error(
+                                'Ошибка копирования:',
+                                error
+                            );
+                        });
+                } else {
+                    const tempInput =
+                        document.createElement(
+                            'textarea'
+                        );
+
+                    tempInput.value = textToCopy;
+                    document.body.appendChild(
+                        tempInput
+                    );
+
+                    tempInput.select();
+                    document.execCommand('copy');
+
+                    document.body.removeChild(
+                        tempInput
+                    );
+
+                    showCopied();
+                }
+            }
+        );
+
+        periodButtons.forEach(function (button) {
+            button.addEventListener(
+                'click',
+                function () {
+                    selectedHistoryDays =
+                        parseInt(
+                            button.dataset.days,
+                            10
+                        );
+
+                    periodButtons.forEach(
+                        function (periodButton) {
+                            periodButton.classList.remove(
+                                'active'
+                            );
+                        }
+                    );
+
+                    button.classList.add('active');
+
+                    loadCurrencyHistory();
+                }
+            );
         });
-    });
 
-    initChart();
-    renderConversionHistory();
-    updatePopularRates();
-    loadCurrencyHistory();
+        periodButtons.forEach(function (button) {
+            const buttonDays =
+                parseInt(button.dataset.days, 10);
+
+            button.classList.toggle(
+                'active',
+                buttonDays === selectedHistoryDays
+            );
+        });
+
+        applyLanguage(currentLanguage);
+        initChart();
+        renderConversionHistory();
+        updatePopularRates();
+        loadCurrencyHistory();
+    });
 });

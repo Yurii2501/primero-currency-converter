@@ -6,151 +6,267 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 function currency_converter_shortcode() {
 
+	$amount_value = '';
+	$from_value   = 'USD';
+	$to_value     = 'ARS';
+	$currencies   = get_supported_currencies();
 
-$amount_value = '';
-$from_value = 'USD';
-$to_value = 'ARS';
+	$from_options = '';
+	$to_options   = '';
 
+	foreach ( $currencies as $code => $name ) {
+		$from_options .= sprintf(
+			'<option value="%1$s" %2$s>%3$s</option>',
+			esc_attr( $code ),
+			selected( $from_value, $code, false ),
+			esc_html( $name )
+		);
 
-    $nonce = wp_nonce_field(
-    'currency_converter_action',
-    'currency_converter_nonce',
-    true,
-    false
-);
+		$to_options .= sprintf(
+			'<option value="%1$s" %2$s>%3$s</option>',
+			esc_attr( $code ),
+			selected( $to_value, $code, false ),
+			esc_html( $name )
+		);
+	}
 
-$currencies = get_supported_currencies();
+	ob_start();
+	?>
 
-$from_options = '';
-$to_options = '';
+	<div class="primero-currency-converter">
 
-foreach ($currencies as $code => $name) {
-    $from_options .= '<option value="' . esc_attr($code) . '" ' . selected($from_value, $code, false) . '>' . esc_html($name) . '</option>';
+		<form method="post" class="currency-converter-form">
 
-    $to_options .= '<option value="' . esc_attr($code) . '" ' . selected($to_value, $code, false) . '>' . esc_html($name) . '</option>';
-}
+			<div class="popular-rates">
+				<div class="popular-rate-card">
+					<span>🇺🇸 USD</span>
+					<strong class="rate-usd">—</strong>
+				</div>
 
-return '
-<div class="primero-currency-converter">
+				<div class="popular-rate-card">
+					<span>🇪🇺 EUR</span>
+					<strong class="rate-eur">—</strong>
+				</div>
 
-<form method="post" class="currency-converter-form">'
-. $nonce .
-'
+				<div class="popular-rate-card">
+					<span>🇬🇧 GBP</span>
+					<strong class="rate-gbp">—</strong>
+				</div>
+			</div>
 
-<div class="popular-rates">
-    <div class="popular-rate-card">
-        <span>🇺🇸 USD</span>
-        <strong id="rateUsd">—</strong>
-    </div>
+			<div class="converter-header">
+				<h2 class="converter-title">
+					<?php
+					echo esc_html__(
+						'Currency Converter',
+						'primero-currency-converter'
+					);
+					?>
+				</h2>
 
-    <div class="popular-rate-card">
-        <span>🇪🇺 EUR</span>
-        <strong id="rateEur">—</strong>
-    </div>
+				<div class="language-switcher">
+					<button
+						type="button"
+						class="language-button active"
+						data-lang="en"
+					>
+						EN
+					</button>
 
-    <div class="popular-rate-card">
-        <span>🇬🇧 GBP</span>
-        <strong id="rateGbp">—</strong>
-    </div>
-</div>
+					<button
+						type="button"
+						class="language-button"
+						data-lang="ru"
+					>
+						RU
+					</button>
 
-<div class="converter-header">
-    <h2 id="converterTitle">' . esc_html__('Currency Converter', 'primero-currency-converter') . '</h2>
+					<button
+						type="button"
+						class="language-button"
+						data-lang="es"
+					>
+						ES
+					</button>
+				</div>
 
-    <div class="language-switcher">
-        <button type="button" class="language-button active" data-lang="en">EN</button>
-        <button type="button" class="language-button" data-lang="ru">RU</button>
-        <button type="button" class="language-button" data-lang="es">ES</button>
-    </div>
+				<label class="theme-switch">
+					<input
+						type="checkbox"
+						class="theme-toggle"
+					>
+					<span class="theme-slider"></span>
+				</label>
+			</div>
 
-    <label class="theme-switch">
-        <input type="checkbox" id="themeToggle">
-        <span class="theme-slider"></span>
-    </label>
-</div>
-<label id="amountLabel">' . esc_html__('Amount', 'primero-currency-converter') . ':</label><br>
+			<label class="amount-label">
+				<?php
+				echo esc_html__(
+					'Amount',
+					'primero-currency-converter'
+				);
+				?>:
+			</label>
 
-<input
-    name="amount"
-    type="number"
-    placeholder="' . esc_attr__('Enter amount', 'primero-currency-converter') . '"
-    required
-    value="' . esc_attr($amount_value) . '"
->
-        <br><br>
-<div class="currency-select-group">
+			<br>
 
-    <label id="fromCurrencyLabel">' . esc_html__('From currency', 'primero-currency-converter') . ':</label>
+			<input
+				name="amount"
+				type="number"
+				placeholder="<?php
+					echo esc_attr__(
+						'Enter amount',
+						'primero-currency-converter'
+					);
+				?>"
+				required
+				value="<?php echo esc_attr( $amount_value ); ?>"
+			>
 
-    <select name="from_currency" required>
-        ' . $from_options . '
-    </select>
+			<br><br>
 
-    <div class="swap-container">
-        <button
-            type="button"
-            class="swap-currencies-button"
-            aria-label="' . esc_attr__('Swap currencies', 'primero-currency-converter') . '"
-        >
-            ⇅
-        </button>
-    </div>
+			<div class="currency-select-group">
 
-    <label id="toCurrencyLabel">' . esc_html__('To currency', 'primero-currency-converter') . ':</label>
-    <select name="to_currency" required>
-        ' . $to_options . '
-    </select>
+				<label class="from-currency-label">
+					<?php
+					echo esc_html__(
+						'From currency',
+						'primero-currency-converter'
+					);
+					?>:
+				</label>
 
-</div>
+				<select name="from_currency" required>
+					<?php echo $from_options; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+				</select>
 
-<br>
+				<div class="swap-container">
+					<button
+						type="button"
+						class="swap-currencies-button"
+						aria-label="<?php
+							echo esc_attr__(
+								'Swap currencies',
+								'primero-currency-converter'
+							);
+						?>"
+					>
+						⇅
+					</button>
+				</div>
 
-<button
-    type="submit"
-    class="convert-button"
-    id="convertButton"
->
-    ' . esc_html__('Convert', 'primero-currency-converter') . '
-</button>
+				<label class="to-currency-label">
+					<?php
+					echo esc_html__(
+						'To currency',
+						'primero-currency-converter'
+					);
+					?>:
+				</label>
 
-<button
-    type="submit"
-    class="refresh-button"
-    id="refreshButton"
-    name="refresh_rates"
-    value="1"
->
-    🔄 ' . esc_html__('Refresh rates', 'primero-currency-converter') . '
-</button>
-    
-</form>
+				<select name="to_currency" required>
+					<?php echo $from_options; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+				</select>
 
-<div class="ajax-result"></div>
+			</div>
 
-<div class="conversion-history">
-    <h4 id="historyTitle">🕘 ' . esc_html__('Last conversions', 'primero-currency-converter') . '</h4>
-    <div id="conversionHistory"></div>
-</div>
+			<br>
 
-' . $result . '
+			<button
+				type="submit"
+				class="convert-button"
+			>
+				<?php
+				echo esc_html__(
+					'Convert',
+					'primero-currency-converter'
+				);
+				?>
+			</button>
 
-<div class="currency-chart-container">
-    <div class="chart-header">
-        <h3 id="chartTitle">📈 ' . esc_html__('Exchange rate history', 'primero-currency-converter') . '</h3>
+			<button
+				type="submit"
+				class="refresh-button"
+				name="refresh_rates"
+				value="1"
+			>
+				🔄
+				<?php
+				echo esc_html__(
+					'Refresh rates',
+					'primero-currency-converter'
+				);
+				?>
+			</button>
 
-        <div class="chart-period-buttons">
-            <button type="button" class="chart-period-button active" data-days="7" id="period7">7D</button>
-<button type="button" class="chart-period-button" data-days="30" id="period30">30D</button>
-<button type="button" class="chart-period-button" data-days="90" id="period90">90D</button>
-        </div>
-    </div>
+		</form>
 
-    <canvas id="currencyChart"></canvas>
-</div>
+		<div class="ajax-result"></div>
 
-<div id="primeroToast" class="primero-toast"></div>
+		<div class="conversion-history">
+			<h4 class="history-title">
+				🕘
+				<?php
+				echo esc_html__(
+					'Last conversions',
+					'primero-currency-converter'
+				);
+				?>
+			</h4>
 
-</div>';
+			<div class="conversion-history-list"></div>
+		</div>
+
+		<div class="currency-chart-container">
+			<div class="chart-header">
+
+				<h3 class="chart-title">
+					📈
+					<?php
+					echo esc_html__(
+						'Exchange rate history',
+						'primero-currency-converter'
+					);
+					?>
+				</h3>
+
+				<div class="chart-period-buttons">
+					<button
+						type="button"
+						class="chart-period-button active"
+						data-days="7"
+					>
+						<span class="period-label period-7">7D</span>
+					</button>
+
+					<button
+						type="button"
+						class="chart-period-button"
+						data-days="30"
+					>
+						<span class="period-label period-30">30D</span>
+					</button>
+
+					<button
+						type="button"
+						class="chart-period-button"
+						data-days="90"
+					>
+						<span class="period-label period-90">90D</span>
+					</button>
+				</div>
+			</div>
+
+			<canvas class="currency-chart"></canvas>
+		</div>
+
+		<div class="primero-toast"></div>
+
+	</div>
+
+	<?php
+
+	return ob_get_clean();
 }
 
 function primero_convert_currency_ajax_handler() {

@@ -255,15 +255,11 @@ body.dark-theme {
     background: #111827;
 }
 
-body.dark-theme .primero-currency-converter {
-    background: #1f2937;
-    color: #ffffff;
-}
-
-body.dark-theme input,
-body.dark-theme select {
+body.dark-theme .primero-currency-converter input,
+body.dark-theme .primero-currency-converter select {
     background: #374151;
     color: #ffffff;
+    -webkit-text-fill-color: #ffffff;
 }
 
 body.dark-theme .conversion-result {
@@ -558,4 +554,24 @@ body.dark-theme .language-button.active {
     background: #3b82f6;
     color: #ffffff;
     border-color: #3b82f6;
+}
+
+body.dark-theme .choices__input {
+    background: #374151 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Темная тема — выбранная и подсвеченная валюта */
+body.dark-theme .choices__list--dropdown .choices__item,
+body.dark-theme .choices__list[aria-expanded] .choices__item {
+    color: #ffffff !important;
+}
+
+body.dark-theme .choices__list--dropdown .choices__item.is-highlighted,
+body.dark-theme .choices__list--dropdown .choices__item.is-selected,
+body.dark-theme .choices__list[aria-expanded] .choices__item.is-highlighted,
+body.dark-theme .choices__list[aria-expanded] .choices__item.is-selected {
+    background: #374151 !important;
+    color: #ffffff !important;
 }
