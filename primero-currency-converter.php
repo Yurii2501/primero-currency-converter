@@ -6,7 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /*
 Plugin Name: Primero Currency Converter
 Description: Modern AJAX currency converter with 160+ currencies, exchange rate history, multilingual support and dark mode.
-Version: 1.0.0
+Version: 1.1.0
 Author: Primero Labs
 Text Domain: primero-currency-converter
 Domain Path: /languages
