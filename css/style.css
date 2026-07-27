@@ -575,3 +575,73 @@ body.dark-theme .choices__list[aria-expanded] .choices__item.is-selected {
     background: #374151 !important;
     color: #ffffff !important;
 }
+
+@media (max-width: 480px) {
+    .converter-header {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px;
+    }
+
+    .converter-title {
+        width: 100%;
+        text-align: center;
+    }
+
+    .language-switcher {
+        display: flex;
+        gap: 8px;
+    }
+
+    .theme-switch {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 480px) {
+
+    .popular-rates {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .popular-rate-card {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .converter-header {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .converter-title {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+
+    .popular-rates {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .popular-rate-card {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .converter-header {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .converter-title {
+        width: 100%;
+        text-align: center;
+    }
+}
